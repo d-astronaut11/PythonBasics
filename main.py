@@ -1,14 +1,51 @@
-from transliterate import translit
-from num2words import num2words
+import smtplib
+import os
 
-print(translit("""Ladies and gentlemen, I'm 78 years old and I finally got 15 minutes of fame once in a lifetime and I guess that this is mine. People have also told me to make these next few minutes escruciatingly embarrassing and to take vengeance of my enemies. Neither will happen.
+login = os.environ["LOGIN"]
+password = os.environ["PASSWORD"]
+sender = os.environ["SENDER"]
+receiver = os.environ["RECEIVER"]
+subject = 'Приглашение на курс'
+content_type = 'text/plain; charset="UTF-8";'
+friend_name = 'Joseph'
+my_name = 'Alex'
+website = 'https://dvmn.org/referrals/FoqtjaNyhQToWO38Un8mT8Ve9rbjzwvENJnbomTy/'
 
-More than 3 years ago I moved to Novo-Novsk, but worked on new Magnetic Storage for last 40. When I was 8...
+replace = {
+    '%friend_name%': friend_name,
+    '%my_name%': my_name,
+    '%website%': website
+}
 
-""", 'ru'))
+letter = """From: {0}
+To: {1}
+Subject: {2}
+Content-Type: {3}
 
-print("78 -", translit(num2words(78), 'ru'))
-print("15 -", translit(num2words(15), 'ru'))
-print("3 -", translit(num2words(3), 'ru'))
-print("40 -", translit(num2words(40), 'ru'))
-print("8 -", translit(num2words(8), 'ru'))
+Привет, %friend_name%! %my_name% приглашает тебя на сайт %website%!
+
+%website% — это новая версия онлайн-курса по программированию. 
+Изучаем Python и не только. Решаем задачи. Получаем ревью от преподавателя. 
+
+Как будет проходить ваше обучение на %website%? 
+
+→ Попрактикуешься на реальных кейсах. 
+Задачи от тимлидов со стажем от 10 лет в программировании.
+→ Будешь учиться без стресса и бессонных ночей. 
+Задачи не «сгорят» и не уйдут к другому. Занимайся в удобное время и ровно столько, сколько можешь.
+→ Подготовишь крепкое резюме.
+Все проекты — они же решение наших задачек — можно разместить на твоём GitHub. Работодатели такое оценят. 
+
+Регистрируйся → %website%  
+На курсы, которые еще не вышли, можно подписаться и получить уведомление о релизе сразу на имейл.""".format(
+    sender, receiver, subject, content_type)
+
+for old, new in replace.items():
+  letter = letter.replace(old, new)
+
+letter = letter.encode("UTF-8")
+
+server = smtplib.SMTP_SSL('smtp.yandex.ru:465')
+server.login(login, password)
+server.sendmail(sender, receiver, letter)
+server.quit()
