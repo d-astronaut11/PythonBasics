@@ -1,51 +1,29 @@
-import smtplib
-import os
+from PIL import Image
 
-login = os.environ["LOGIN"]
-password = os.environ["PASSWORD"]
-sender = os.environ["SENDER"]
-receiver = os.environ["RECEIVER"]
-subject = 'Приглашение на курс'
-content_type = 'text/plain; charset="UTF-8";'
-friend_name = 'Joseph'
-my_name = 'Alex'
-website = 'https://dvmn.org/referrals/FoqtjaNyhQToWO38Un8mT8Ve9rbjzwvENJnbomTy/'
+img_url = "monro.jpg"
+offset = 50
 
-replace = {
-    '%friend_name%': friend_name,
-    '%my_name%': my_name,
-    '%website%': website
-}
+image = Image.open(img_url)
+image_init_red, image_init_green, image_init_blue = image.split()
 
-letter = """From: {0}
-To: {1}
-Subject: {2}
-Content-Type: {3}
+image_left_red = image_init_red.crop(
+    (offset, 0, image_init_red.width, image_init_red.height))
+image_mid_red = image_init_red.crop(
+    (offset / 2, 0, image_init_red.width - offset / 2, image_init_red.height))
+image_red = Image.blend(image_left_red, image_mid_red, 0.4)
 
-Привет, %friend_name%! %my_name% приглашает тебя на сайт %website%!
+image_left_blue = image_init_blue.crop(
+    (0, 0, image_init_blue.width - offset, image_init_blue.height))
+image_mid_blue = image_init_blue.crop(
+    (offset / 2, 0, image_init_blue.width - offset / 2,
+     image_init_blue.height))
+image_blue = Image.blend(image_left_blue, image_mid_blue, 0.4)
 
-%website% — это новая версия онлайн-курса по программированию. 
-Изучаем Python и не только. Решаем задачи. Получаем ревью от преподавателя. 
+image_green = image_init_green.crop(
+    (offset / 2, 0, image_init_green.width - offset / 2,
+     image_init_green.height))
 
-Как будет проходить ваше обучение на %website%? 
-
-→ Попрактикуешься на реальных кейсах. 
-Задачи от тимлидов со стажем от 10 лет в программировании.
-→ Будешь учиться без стресса и бессонных ночей. 
-Задачи не «сгорят» и не уйдут к другому. Занимайся в удобное время и ровно столько, сколько можешь.
-→ Подготовишь крепкое резюме.
-Все проекты — они же решение наших задачек — можно разместить на твоём GitHub. Работодатели такое оценят. 
-
-Регистрируйся → %website%  
-На курсы, которые еще не вышли, можно подписаться и получить уведомление о релизе сразу на имейл.""".format(
-    sender, receiver, subject, content_type)
-
-for old, new in replace.items():
-  letter = letter.replace(old, new)
-
-letter = letter.encode("UTF-8")
-
-server = smtplib.SMTP_SSL('smtp.yandex.ru:465')
-server.login(login, password)
-server.sendmail(sender, receiver, letter)
-server.quit()
+image_final = Image.merge("RGB", (image_red, image_green, image_blue))
+image_final.save("final.jpg")
+image_final.thumbnail((80, 80))
+image_final.save("final_icon.jpg")
