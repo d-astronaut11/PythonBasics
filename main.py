@@ -25,12 +25,9 @@ def is_very_long(password):
   return len(password) > 12
 
 
-def rate_password(input, score):
-  return score + 2 if input else score
-
-
-def main():
-  functions_list = [
+def rate_password(password):
+  score = 0
+  score_functions = [
       has_digit, 
       has_letters, 
       has_upper_letters, 
@@ -38,13 +35,18 @@ def main():
       has_symbols, 
       is_very_long
   ]
+  for func in score_functions:
+      score += 2 if func(password) else 0
+  return score
 
-  def on_ask_change(edit, new_edit_text):
-    score = 0
-    for function in functions_list:
-      score = rate_password(function(new_edit_text), score)
-    reply.set_text("Рейтинг пароля: %s" % score)
 
+def on_ask_change(edit, new_edit_text):
+  score = rate_password(new_edit_text)
+  reply.set_text("Рейтинг пароля: %d" % score)
+
+
+def main():
+  global reply 
   ask = urwid.Edit('Введите пароль: ', mask='*')
   reply = urwid.Text("")
   menu = urwid.Pile([ask, reply])
