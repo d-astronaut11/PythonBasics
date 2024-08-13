@@ -1,58 +1,48 @@
-import urwid
+import os
+
+from pytimeparse import parse
+
+import ptbot
+
+TG_TOKEN = os.environ["TG_TOKEN"]
+TG_CHAT_ID = os.environ["TG_CHAT_ID"]
+
+def handle_message(chat_id, message):
+  delay = parse(message)
+  if delay is None:
+    warning = "Пожалуйста, введите корректное количество времени (например, '5s', '2m')"
+    bot.send_message(chat_id, warning)
+    return
+  message_id = bot.send_message(chat_id, f"Осталось: {delay} секунд")
+  bot.create_countdown(delay, notify_progress, chat_id=chat_id, message_id=message_id, delay=delay)
 
 
-def has_digit(password):
-  return any(letter.isdigit() for letter in password)
+def notify_progress(secs_left, chat_id, message_id, delay):
+  iteration = delay - secs_left
+  progress_bar = render_progressbar(delay, iteration)
+  bot.update_message(chat_id, message_id, f"Осталось: {secs_left} секунд\n{progress_bar}")
+  if secs_left == 0:
+    send_delayed_message(chat_id, "Время вышло!")
 
 
-def has_letters(password):
-  return any(letter.isalpha() for letter in password)
+def send_delayed_message(chat_id, message):
+  bot.send_message(chat_id, message)
 
 
-def has_upper_letters(password):
-  return any(letter.isupper() for letter in password)
-
-
-def has_lower_letters(password):
-  return any(letter.islower() for letter in password)
-
-
-def has_symbols(password):
-  return any(not c.isdigit() and not c.isalpha() for c in password)
-
-
-def is_very_long(password):
-  return len(password) > 12
-
-
-def rate_password(password):
-  score = 0
-  score_functions = [
-      has_digit, 
-      has_letters, 
-      has_upper_letters, 
-      has_lower_letters,
-      has_symbols, 
-      is_very_long
-  ]
-  for func in score_functions:
-      score += 2 if func(password) else 0
-  return score
-
-
-def on_ask_change(edit, new_edit_text):
-  score = rate_password(new_edit_text)
-  reply.set_text("Рейтинг пароля: %d" % score)
+def render_progressbar(total, iteration, prefix='', suffix='', length=30, fill='█', zfill='░'):
+  iteration = min(total, iteration)
+  percent = "{0:.1f}"
+  percent = percent.format(100 * (iteration / float(total)))
+  filled_length = int(length * iteration // total)
+  pbar = fill * filled_length + zfill * (length - filled_length)
+  return '{0} |{1}| {2}% {3}'.format(prefix, pbar, percent, suffix)
 
 
 def main():
-  global reply 
-  ask = urwid.Edit('Введите пароль: ', mask='*')
-  reply = urwid.Text("")
-  menu = urwid.Pile([ask, reply])
-  menu = urwid.Filler(menu, valign='top')
-  urwid.connect_signal(ask, 'change', on_ask_change)
-  urwid.MainLoop(menu).run()
+  global bot
+  bot = ptbot.Bot(TG_TOKEN)
+  bot.reply_on_message(handle_message)
+  bot.run_bot()
 
 
 if __name__ == '__main__':

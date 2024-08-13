@@ -6,7 +6,9 @@ authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
 python = ">=3.10.0,<3.12"
-urwid = "2.6.15"
+telegram = "^0.0.1"
+python-telegram-bot = "13.2"
+pytimeparse = "1.1.8"
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md
