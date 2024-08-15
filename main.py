@@ -1,59 +1,100 @@
+import json
 import os
 
-from pytimeparse import parse
+import folium
+import requests
+from flask import Flask
+from geopy import distance
 
-import ptbot
+API = os.environ["API_YANDEX"]
+FILE_NAME = "coffee.json"
+ENCONDING = "CP1251"
 
-TG_TOKEN = os.environ["TG_TOKEN"]
-TG_CHAT_ID = os.environ["TG_CHAT_ID"]
+
+def get_content_of_file(file_name, encoding):
+    with open(file_name, "r", encoding=encoding) as source_file:
+        contents = source_file.read()
+    contents = json.loads(contents)
+    return contents
 
 
-def handle_message(chat_id, message):
-    delay = parse(message)
-
-    if delay is None:
-        warning = (
-            "Пожалуйста, введите корректное количество времени (например, '5s', '2m')"
-        )
-        bot.send_message(chat_id, warning)
-        return
-
-    message_id = bot.send_message(chat_id, f"Осталось: {delay} секунд")
-    bot.create_countdown(
-        delay, notify_progress, chat_id=chat_id, message_id=message_id, delay=delay
+def fetch_coordinates(apikey, address):
+    base_url = "https://geocode-maps.yandex.ru/1.x"
+    response = requests.get(
+        base_url,
+        params={
+            "geocode": address,
+            "apikey": apikey,
+            "format": "json",
+        },
     )
+    response.raise_for_status()
+    found_places = response.json()["response"]["GeoObjectCollection"]["featureMember"]
+
+    if not found_places:
+        return None
+
+    most_relevant = found_places[0]
+    lon, lat = most_relevant["GeoObject"]["Point"]["pos"].split(" ")
+    return lon, lat
 
 
-def notify_progress(secs_left, chat_id, message_id, delay):
-    iteration = delay - secs_left
-    progress_bar = render_progressbar(delay, iteration)
-    bot.update_message(
-        chat_id, message_id, f"Осталось: {secs_left} секунд\n{progress_bar}"
-    )
-    if secs_left == 0:
-        send_delayed_message(chat_id, "Время вышло!")
+def form_list_of_coffee_bars(bars, coords):
+    list_of_bars = []
+    for bar in bars:
+        coords_for_distance = (coords[1], coords[0])
+        bar_coords = (bar["Latitude_WGS84"], bar["Longitude_WGS84"])
+        bar_item = {
+            "title": bar["Name"],
+            "distance": distance.distance(coords_for_distance, bar_coords).km,
+            "latitude": bar["Latitude_WGS84"],
+            "longitude": bar["Longitude_WGS84"],
+        }
+        list_of_bars.append(bar_item)
+    return list_of_bars
 
 
-def send_delayed_message(chat_id, message):
-    bot.send_message(chat_id, message)
+def get_distance_name(dict):
+    return dict["distance"]
 
 
-def render_progressbar(
-    total, iteration, prefix="", suffix="", length=30, fill="█", zfill="░"
-):
-    iteration = min(total, iteration)
-    percent = "{0:.1f}"
-    percent = percent.format(100 * (iteration / float(total)))
-    filled_length = int(length * iteration // total)
-    pbar = fill * filled_length + zfill * (length - filled_length)
-    return "{0} |{1}| {2}% {3}".format(prefix, pbar, percent, suffix)
+def get_bars_map(bars, coords):
+    map = folium.Map(location=coords, zoom_start=12)
+    folium.Marker(
+        location=coords, popup="Вы здесь", icon=folium.Icon(color="blue")
+    ).add_to(map)
+
+    for bar in bars:
+        folium.Marker(
+            location=[bar["latitude"], bar["longitude"]],
+            popup=bar["title"],
+            icon=folium.Icon(color="green"),
+        ).add_to(map)
+    return map
+
+
+def open_html_file():
+    with open("coffee_map.html") as file:
+        return file.read()
 
 
 def main():
-    global bot
-    bot = ptbot.Bot(TG_TOKEN)
-    bot.reply_on_message(handle_message)
-    bot.run_bot()
+    file_contents = get_content_of_file(FILE_NAME, ENCONDING)
+    my_location_coords = fetch_coordinates(API, input("Где вы находитесь? "))
+    if my_location_coords is None:
+        print("Не удалось найти координаты для указанного местоположения.")
+    else:
+        print("Ваши координаты:", my_location_coords)
+        list_of_coffee_bars = form_list_of_coffee_bars(file_contents, my_location_coords)
+        nearest_coffees = sorted(list_of_coffee_bars, key=get_distance_name)[:5]
+        coords_for_map = (my_location_coords[1], my_location_coords[0])
+        map = get_bars_map(nearest_coffees, coords_for_map)
+        map.save("coffee_map.html")
+        print("Карта сохранена в файл 'coffee_map.html'")
+
+        app = Flask(__name__)
+        app.add_url_rule("/", "map", open_html_file)
+        app.run("0.0.0.0")
 
 
 if __name__ == "__main__":
