@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 from flask import Flask
 from geopy import distance
 
-load_dotenv()
-API = os.getenv("API_YANDEX")
 FILE_NAME = "coffee.json"
 ENCODING = "CP1251"
 
@@ -109,8 +107,11 @@ def run_flask_app():
 
 
 def main():
+    load_dotenv()
+    api_key  = os.getenv("API_YANDEX")
+
     location = input("Где вы находитесь? ")
-    create_map_with_nearest_coffees(API, FILE_NAME, ENCODING, location)
+    create_map_with_nearest_coffees(api_key, FILE_NAME, ENCODING, location)
     run_flask_app()
 
 
