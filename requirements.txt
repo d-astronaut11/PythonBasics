@@ -1,0 +1,7 @@
+yandex==0.0.2
+requests==2.32.3
+telegram==0.0.1
+geopy==2.4.1
+folium==0.17.0
+flask==3.0.3
+python-dotenv==1.0.1
